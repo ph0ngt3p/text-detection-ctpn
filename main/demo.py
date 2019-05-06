@@ -79,7 +79,7 @@ def main(argv=None):
             model_path = os.path.join(FLAGS.checkpoint_path, os.path.basename(ckpt_state.model_checkpoint_path))
             print('Restore from {}'.format(model_path))
             saver.restore(sess, model_path)
-            print([m.values() for m in sess.graph.get_operations()])
+            # print([m.values() for m in sess.graph.get_operations()])
 
             im_fn_list = get_images()
             for im_fn in im_fn_list:
@@ -109,7 +109,6 @@ def main(argv=None):
                 # textsegs, _ = proposal_layer(cls_prob_val, bbox_pred_val, im_info)
                 # scores = textsegs[:, 0]
                 # textsegs = textsegs[:, 1:5]
-                # print('boxes_val[:,3]', boxes_val[:, 3] - boxes_val[:, 1] + 1)
 
                 textdetector = TextDetector(DETECT_MODE='H')
                 boxes = textdetector.detect(boxes_val, scores_val[:, np.newaxis], img.shape[:2])

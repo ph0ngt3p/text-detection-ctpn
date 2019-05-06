@@ -1,10 +1,19 @@
+import os
+import sys
+import time
+
 import numpy as np
 import tensorflow as tf
-from tensorflow_serving.apis import predict_pb2
-from tensorflow_serving.apis.prediction_service_pb2_grpc import PredictionServiceStub
-
 import grpc
 import cv2
+
+from tensorflow_serving.apis import predict_pb2
+from tensorflow_serving.apis.prediction_service_pb2_grpc import PredictionServiceStub
+sys.path.append(os.getcwd())
+
+from utils.text_connector.detectors import TextDetector
+
+
 
 # Your config
 SERVICE_HOST = 'localhost:8500'  # sample
@@ -31,6 +40,7 @@ def resize_image(img):
 #######
 
 
+start = time.time()
 # Connect to server
 channel = grpc.insecure_channel(SERVICE_HOST)
 stub = PredictionServiceStub(channel)
@@ -56,5 +66,19 @@ result = stub.Predict.future(request, 5)  # 5s timeout
 
 # Get output depends on our input/output signature, and their types
 # for example, our output signature key is 'output' and has string value
-box_pred = np.array(result.result().outputs['boxes'].float_val, dtype=np.float32).reshape(-1, 4)  # we have batch result, so just take first index
-print(box_pred)
+boxes_val = np.array(result.result().outputs['boxes'].float_val, dtype=np.float32).reshape(-1, 4)  # we have batch result, so just take first index
+scores_val = np.array(result.result().outputs['scores'].float_val, dtype=np.float32)
+scores_val = scores_val[:, np.newaxis]
+
+text_detector = TextDetector(DETECT_MODE='H')
+boxes = text_detector.detect(boxes_val, scores_val, img.shape[:2])
+boxes = np.array(boxes, dtype=np.int)
+cost_time = (time.time() - start)
+print("cost time: {:.2f}s".format(cost_time))
+
+for i, box in enumerate(boxes):
+    cv2.polylines(img, [box[:8].astype(np.int32).reshape((-1, 1, 2))], True, color=(0, 255, 0),
+                  thickness=2)
+img = cv2.resize(img, None, None, fx=1.0 / rh, fy=1.0 / rw, interpolation=cv2.INTER_LINEAR)
+cv2.imshow('res', img)
+cv2.waitKey(0)
