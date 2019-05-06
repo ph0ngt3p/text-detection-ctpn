@@ -17,3 +17,7 @@ checkpoints_*/
 *.swp
 *.pb
 *.ckpt
+/venv
+/exported
+data/demo
+data/res

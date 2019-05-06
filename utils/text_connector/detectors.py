@@ -27,6 +27,8 @@ class TextDetector:
         # 对proposal做nms
         keep_inds = nms(np.hstack((text_proposals, scores)), TextLineCfg.TEXT_PROPOSALS_NMS_THRESH)
         text_proposals, scores = text_proposals[keep_inds], scores[keep_inds]
+        print('numpy text propose', text_proposals[0])
+        print('numpy text score', scores[0])
 
         # 获取检测结果
         text_recs = self.text_proposal_connector.get_text_lines(text_proposals, scores, size)
@@ -38,6 +40,7 @@ class TextDetector:
         widths = np.zeros((len(boxes), 1), np.float)
         scores = np.zeros((len(boxes), 1), np.float)
         index = 0
+        print(boxes.shape)
         for box in boxes:
             heights[index] = (abs(box[5] - box[1]) + abs(box[7] - box[3])) / 2.0 + 1
             widths[index] = (abs(box[2] - box[0]) + abs(box[6] - box[4])) / 2.0 + 1

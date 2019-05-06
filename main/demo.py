@@ -7,11 +7,15 @@ import time
 import cv2
 import numpy as np
 import tensorflow as tf
+from tensorflow.python.client import device_lib
+print(device_lib.list_local_devices())
 
 sys.path.append(os.getcwd())
 from nets import model_train as model
 from utils.rpn_msr.proposal_layer import proposal_layer
+from utils.rpn_msr.proposal_layer_tf import proposal_layer_tf
 from utils.text_connector.detectors import TextDetector
+from utils.text_connector.detectors_tf import detect
 
 tf.app.flags.DEFINE_string('test_data_path', 'data/demo/', '')
 tf.app.flags.DEFINE_string('output_path', 'data/res/', '')
@@ -64,6 +68,8 @@ def main(argv=None):
         global_step = tf.get_variable('global_step', [], initializer=tf.constant_initializer(0), trainable=False)
 
         bbox_pred, cls_pred, cls_prob = model.model(input_image)
+        boxes, scores = proposal_layer_tf(cls_prob, bbox_pred, input_im_info)
+        # text_proposals, text_scores = detect(boxes, scores)
 
         variable_averages = tf.train.ExponentialMovingAverage(0.997, global_step)
         saver = tf.train.Saver(variable_averages.variables_to_restore())
@@ -73,6 +79,7 @@ def main(argv=None):
             model_path = os.path.join(FLAGS.checkpoint_path, os.path.basename(ckpt_state.model_checkpoint_path))
             print('Restore from {}'.format(model_path))
             saver.restore(sess, model_path)
+            print([m.values() for m in sess.graph.get_operations()])
 
             im_fn_list = get_images()
             for im_fn in im_fn_list:
@@ -88,16 +95,24 @@ def main(argv=None):
                 img, (rh, rw) = resize_image(im)
                 h, w, c = img.shape
                 im_info = np.array([h, w, c]).reshape([1, 3])
-                bbox_pred_val, cls_prob_val = sess.run([bbox_pred, cls_prob],
-                                                       feed_dict={input_image: [img],
-                                                                  input_im_info: im_info})
+                # bbox_pred_val, cls_prob_val = sess.run([bbox_pred, cls_prob],
+                #                                        feed_dict={input_image: np.expand_dims(img, axis=0),
+                #                                                   input_im_info: im_info})
+                boxes_val, scores_val = sess.run([boxes, scores],
+                                                 feed_dict={input_image: np.expand_dims(img, axis=0),
+                                                            input_im_info: im_info})
 
-                textsegs, _ = proposal_layer(cls_prob_val, bbox_pred_val, im_info)
-                scores = textsegs[:, 0]
-                textsegs = textsegs[:, 1:5]
+                # text_proposals_val, text_scores_val = sess.run([text_proposals, text_scores],
+                #                                  feed_dict={input_image: np.expand_dims(img, axis=0),
+                #                                             input_im_info: im_info})
+
+                # textsegs, _ = proposal_layer(cls_prob_val, bbox_pred_val, im_info)
+                # scores = textsegs[:, 0]
+                # textsegs = textsegs[:, 1:5]
+                # print('boxes_val[:,3]', boxes_val[:, 3] - boxes_val[:, 1] + 1)
 
                 textdetector = TextDetector(DETECT_MODE='H')
-                boxes = textdetector.detect(textsegs, scores[:, np.newaxis], img.shape[:2])
+                boxes = textdetector.detect(boxes_val, scores_val[:, np.newaxis], img.shape[:2])
                 boxes = np.array(boxes, dtype=np.int)
 
                 cost_time = (time.time() - start)

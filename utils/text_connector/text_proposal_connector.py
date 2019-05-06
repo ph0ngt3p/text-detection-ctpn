@@ -23,6 +23,7 @@ class TextProposalConnector:
     def get_text_lines(self, text_proposals, scores, im_size):
         # tp=text proposal
         tp_groups = self.group_text_proposals(text_proposals, scores, im_size)
+        print(tp_groups)
         text_lines = np.zeros((len(tp_groups), 5), np.float32)
 
         for index, tp_indices in enumerate(tp_groups):
