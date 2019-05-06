@@ -68,8 +68,8 @@ def main(argv=None):
         global_step = tf.get_variable('global_step', [], initializer=tf.constant_initializer(0), trainable=False)
 
         bbox_pred, cls_pred, cls_prob = model.model(input_image)
-        boxes, scores = proposal_layer_tf(cls_prob, bbox_pred, input_im_info)
-        # text_proposals, text_scores = detect(boxes, scores)
+        text_segments, scores = proposal_layer_tf(cls_prob, bbox_pred, input_im_info)
+        boxes = detect(text_segments, scores, input_im_info[:2])
 
         variable_averages = tf.train.ExponentialMovingAverage(0.997, global_step)
         saver = tf.train.Saver(variable_averages.variables_to_restore())
@@ -98,26 +98,26 @@ def main(argv=None):
                 # bbox_pred_val, cls_prob_val = sess.run([bbox_pred, cls_prob],
                 #                                        feed_dict={input_image: np.expand_dims(img, axis=0),
                 #                                                   input_im_info: im_info})
-                boxes_val, scores_val = sess.run([boxes, scores],
-                                                 feed_dict={input_image: np.expand_dims(img, axis=0),
-                                                            input_im_info: im_info})
-
-                # text_proposals_val, text_scores_val = sess.run([text_proposals, text_scores],
+                # boxes_val, scores_val = sess.run([boxes, scores],
                 #                                  feed_dict={input_image: np.expand_dims(img, axis=0),
                 #                                             input_im_info: im_info})
+
+                boxes_val = sess.run([boxes],
+                                     feed_dict={input_image: np.expand_dims(img, axis=0),
+                                                input_im_info: im_info})
 
                 # textsegs, _ = proposal_layer(cls_prob_val, bbox_pred_val, im_info)
                 # scores = textsegs[:, 0]
                 # textsegs = textsegs[:, 1:5]
 
-                textdetector = TextDetector(DETECT_MODE='H')
-                boxes = textdetector.detect(boxes_val, scores_val[:, np.newaxis], img.shape[:2])
-                boxes = np.array(boxes, dtype=np.int)
+                # textdetector = TextDetector(DETECT_MODE='H')
+                # boxes = textdetector.detect(boxes_val, scores_val[:, np.newaxis], img.shape[:2])
+                boxes_val = np.array(boxes_val, dtype=np.int)
 
                 cost_time = (time.time() - start)
                 print("cost time: {:.2f}s".format(cost_time))
 
-                for i, box in enumerate(boxes):
+                for i, box in enumerate(boxes_val):
                     cv2.polylines(img, [box[:8].astype(np.int32).reshape((-1, 1, 2))], True, color=(0, 255, 0),
                                   thickness=2)
                 img = cv2.resize(img, None, None, fx=1.0 / rh, fy=1.0 / rw, interpolation=cv2.INTER_LINEAR)
@@ -125,7 +125,7 @@ def main(argv=None):
 
                 with open(os.path.join(FLAGS.output_path, os.path.splitext(os.path.basename(im_fn))[0]) + ".txt",
                           "w") as f:
-                    for i, box in enumerate(boxes):
+                    for i, box in enumerate(boxes_val):
                         line = ",".join(str(box[k]) for k in range(8))
                         line += "," + str(scores[i]) + "\r\n"
                         f.writelines(line)

@@ -1,5 +1,9 @@
 import tensorflow as tf
+from tensorflow import contrib
+autograph = contrib.autograph
 from .text_connect_cfg import Config as TextLineCfg
+from .text_proposal_connector import TextProposalConnector
+from .text_proposal_connector_tf import get_text_lines
 
 
 def clip_boxes(boxes, im_shape):
@@ -43,6 +47,9 @@ def detect(text_proposals, scores, size):
     text_proposals = tf.Print(text_proposals, [text_proposals, scores], 'tf text prop, tf scores')
 
     # 获取检测结果
-    text_recs = self.text_proposal_connector.get_text_lines(text_proposals, scores, size)
-    keep_inds = self.filter_boxes(text_recs)
+    print(autograph.to_code(get_text_lines))
+    tf_get_text_line = autograph.to_graph(get_text_lines)
+
+    text_recs = tf_get_text_line(text_proposals, scores, size)
+    keep_inds = filter_boxes(text_recs)
     return text_recs[keep_inds]
